@@ -33,6 +33,7 @@ void setup() {
   //M5初期化
   M5.begin();
   Serial.begin(9600); //M5.begin()の後にSerialの初期化をしている
+  Serial.setDebugOutput(true);
   M5.Power.begin();
   dacWrite(25, 0); //ノイズ対策
 
@@ -42,12 +43,16 @@ void setup() {
   M5.Lcd.setTextColor(BLACK, WHITE); 
 
   // Wifi接続
-  M5.Lcd.println(" Wi-Fi APに接続します。");
-  WiFi.begin(ssid, password);  //  Wi-Fi APに接続
-  M5.Lcd.print("Wi-Fi APに接続しています");
-  while (WiFi.status() != WL_CONNECTED) {  //  Wi-Fi AP接続待ち
-    M5.Lcd.print(".");
-    delay(100);
+  WiFi.mode(WIFI_STA); 
+  while(WiFi.status() != WL_CONNECTED){
+    WiFi.disconnect();
+    M5.Lcd.print("Wi-Fi APに接続しています");
+    WiFi.begin(ssid, password);  //  Wi-Fi APに接続
+    for(int i=0; i<20; i++){
+      if(WiFi.status() == WL_CONNECTED) break;
+      M5.Lcd.print(".");
+      delay(500);
+    }
   }
   M5.Lcd.println(" Wi-Fi APに接続しました。");
   M5.Lcd.print("IP address: "); M5.Lcd.println(WiFi.localIP());
@@ -170,6 +175,11 @@ JsonObject getWeather(String url) {
 
     // LocationヘッダにURLが格納されているのでそちらに再接続
     return getWeather(http.header(headers[0]));
+
+  // timeoutの時は再試行
+  }else if(httpCode == -11){
+    http.end();
+    return getWeather(url);
 
   // その他
   }else{
